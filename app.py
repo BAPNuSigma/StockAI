@@ -7,6 +7,8 @@ import pandas as pd
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import tempfile
+from docx2pdf import convert as docx2pdf_convert
 
 # Load environment variables
 load_dotenv()
@@ -116,6 +118,25 @@ def create_technical_indicators_chart(historical_data: pd.DataFrame) -> go.Figur
     
     return fig
 
+def generate_and_save_one_pager(ticker, style):
+    generator = StockOnePager(ticker)
+    if style == 'growth':
+        doc = generator.generate_growth_one_pager()
+    elif style == 'value':
+        doc = generator.generate_value_one_pager()
+    else:
+        doc = generator.generate_core_one_pager()
+    # Save to a temp file
+    tmp_docx = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+    doc.save(tmp_docx.name)
+    tmp_docx.close()
+    return tmp_docx.name
+
+def convert_docx_to_pdf(docx_path):
+    tmp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    docx2pdf_convert(docx_path, tmp_pdf.name)
+    return tmp_pdf.name
+
 def main():
     st.set_page_config(page_title="Stock One-Pager Generator", layout="wide")
     
@@ -210,6 +231,38 @@ def main():
                     st.write(f"*{article['source']} - {article['publishedAt']}*")
                     st.write(article['description'])
                     st.write("---")
+            
+            # One-pager type selector and download buttons
+            st.subheader("Generate and Download One-Pager")
+            one_pager_type = st.radio(
+                "Select One-Pager Type:",
+                options=["growth", "value", "core"],
+                format_func=lambda x: x.capitalize(),
+                horizontal=True
+            )
+            if st.button("Generate One-Pager"):
+                st.session_state['one_pager_docx'] = generate_and_save_one_pager(ticker, one_pager_type)
+                st.success("One-Pager generated!")
+            if 'one_pager_docx' in st.session_state:
+                with open(st.session_state['one_pager_docx'], "rb") as f:
+                    st.download_button(
+                        label="Download as DOCX",
+                        data=f,
+                        file_name=os.path.basename(st.session_state['one_pager_docx']),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                # PDF conversion and download
+                try:
+                    pdf_path = convert_docx_to_pdf(st.session_state['one_pager_docx'])
+                    with open(pdf_path, "rb") as fpdf:
+                        st.download_button(
+                            label="Download as PDF",
+                            data=fpdf,
+                            file_name=os.path.basename(pdf_path),
+                            mime="application/pdf"
+                        )
+                except Exception as e:
+                    st.warning(f"PDF conversion failed: {e}")
             
         except Exception as e:
             st.error(f"Error: {str(e)}")
