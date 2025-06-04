@@ -4,7 +4,6 @@ from ta.trend import SMAIndicator, EMAIndicator, MACD, ADXIndicator, CCIIndicato
 from ta.momentum import RSIIndicator, StochasticOscillator
 from ta.volatility import BollingerBands, AverageTrueRange
 from ta.volume import OnBalanceVolumeIndicator, AccDistIndexIndicator
-from ta.momentum import MoneyFlowIndicator
 
 class TechnicalAnalyzer:
     def __init__(self, data):
@@ -88,9 +87,6 @@ class TechnicalAnalyzer:
             
             # Accumulation/Distribution Index
             self.data['ADI'] = AccDistIndexIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close'], volume=self.data['Volume']).acc_dist_index()
-            
-            # Money Flow Index
-            self.data['MFI'] = MoneyFlowIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close'], volume=self.data['Volume']).money_flow_index()
         except Exception as e:
             print(f"Error calculating volume indicators: {str(e)}")
 
