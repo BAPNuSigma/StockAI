@@ -15,9 +15,9 @@ python-dotenv==1.0.0
 
 # Trading and market data
 alpaca-py==0.40.1
-TA-Lib==0.4.28
 tiingo==0.1.0
 financialmodelingprep==0.0.1
+ta==0.11.0  # Technical Analysis library (replaces TA-Lib)
 
 # Document processing
 docx2pdf

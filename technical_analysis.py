@@ -1,148 +1,220 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, Tuple
-import talib
+from ta.trend import SMAIndicator, EMAIndicator, MACD, ADXIndicator, CCIIndicator
+from ta.momentum import RSIIndicator, StochasticOscillator
+from ta.volatility import BollingerBands, AverageTrueRange
+from ta.volume import OnBalanceVolumeIndicator, AccDistIndexIndicator
+from ta.momentum import MoneyFlowIndicator
 
 class TechnicalAnalyzer:
-    def __init__(self, historical_data: pd.DataFrame):
+    def __init__(self, data):
         """
-        Initialize the technical analyzer with historical price data.
-        
-        Args:
-            historical_data (pd.DataFrame): Historical price data with OHLCV columns
+        Initialize with historical price data
+        data: DataFrame with columns ['Open', 'High', 'Low', 'Close', 'Volume']
         """
-        self.data = historical_data
-        self.close = self.data['close']
-        self.high = self.data['high']
-        self.low = self.data['low']
-        self.volume = self.data['volume']
-    
-    def calculate_moving_averages(self) -> Dict:
-        """Calculate various moving averages."""
-        try:
-            return {
-                'sma_20': talib.SMA(self.close, timeperiod=20),
-                'sma_50': talib.SMA(self.close, timeperiod=50),
-                'sma_200': talib.SMA(self.close, timeperiod=200),
-                'ema_12': talib.EMA(self.close, timeperiod=12),
-                'ema_26': talib.EMA(self.close, timeperiod=26)
-            }
-        except Exception as e:
-            print(f"Error calculating moving averages: {e}")
-            return {}
-    
-    def calculate_momentum_indicators(self) -> Dict:
-        """Calculate momentum indicators."""
-        try:
-            return {
-                'rsi': talib.RSI(self.close, timeperiod=14),
-                'macd': talib.MACD(self.close)[0],
-                'macd_signal': talib.MACD(self.close)[1],
-                'macd_hist': talib.MACD(self.close)[2],
-                'stoch_k': talib.STOCH(self.high, self.low, self.close)[0],
-                'stoch_d': talib.STOCH(self.high, self.low, self.close)[1]
-            }
-        except Exception as e:
-            print(f"Error calculating momentum indicators: {e}")
-            return {}
-    
-    def calculate_volatility_indicators(self) -> Dict:
-        """Calculate volatility indicators."""
-        try:
-            return {
-                'atr': talib.ATR(self.high, self.low, self.close, timeperiod=14),
-                'natr': talib.NATR(self.high, self.low, self.close, timeperiod=14),
-                'bollinger_upper': talib.BBANDS(self.close)[0],
-                'bollinger_middle': talib.BBANDS(self.close)[1],
-                'bollinger_lower': talib.BBANDS(self.close)[2]
-            }
-        except Exception as e:
-            print(f"Error calculating volatility indicators: {e}")
-            return {}
-    
-    def calculate_volume_indicators(self) -> Dict:
-        """Calculate volume-based indicators."""
-        try:
-            return {
-                'obv': talib.OBV(self.close, self.volume),
-                'ad': talib.AD(self.high, self.low, self.close, self.volume),
-                'adosc': talib.ADOSC(self.high, self.low, self.close, self.volume)
-            }
-        except Exception as e:
-            print(f"Error calculating volume indicators: {e}")
-            return {}
-    
-    def calculate_trend_indicators(self) -> Dict:
-        """Calculate trend indicators."""
-        try:
-            return {
-                'adx': talib.ADX(self.high, self.low, self.close, timeperiod=14),
-                'cci': talib.CCI(self.high, self.low, self.close, timeperiod=14),
-                'mfi': talib.MFI(self.high, self.low, self.close, self.volume, timeperiod=14)
-            }
-        except Exception as e:
-            print(f"Error calculating trend indicators: {e}")
-            return {}
-    
-    def get_all_indicators(self) -> Dict:
-        """Calculate all technical indicators."""
-        return {
-            'moving_averages': self.calculate_moving_averages(),
-            'momentum': self.calculate_momentum_indicators(),
-            'volatility': self.calculate_volatility_indicators(),
-            'volume': self.calculate_volume_indicators(),
-            'trend': self.calculate_trend_indicators()
-        }
-    
-    def get_signal_summary(self) -> Dict:
-        """Generate a summary of technical signals."""
-        indicators = self.get_all_indicators()
-        current_price = self.close.iloc[-1]
+        self.data = data
+        self.calculate_indicators()
+
+    def calculate_indicators(self):
+        """Calculate all technical indicators"""
+        # Moving Averages
+        self.calculate_moving_averages()
         
-        # Moving Average Signals
-        ma_signals = {
-            'above_sma_20': current_price > indicators['moving_averages']['sma_20'].iloc[-1],
-            'above_sma_50': current_price > indicators['moving_averages']['sma_50'].iloc[-1],
-            'above_sma_200': current_price > indicators['moving_averages']['sma_200'].iloc[-1],
-            'golden_cross': (indicators['moving_averages']['sma_50'].iloc[-1] > 
-                           indicators['moving_averages']['sma_200'].iloc[-1] and
-                           indicators['moving_averages']['sma_50'].iloc[-2] <= 
-                           indicators['moving_averages']['sma_200'].iloc[-2])
-        }
+        # Momentum Indicators
+        self.calculate_momentum_indicators()
         
-        # RSI Signals
-        rsi = indicators['momentum']['rsi'].iloc[-1]
-        rsi_signals = {
-            'overbought': rsi > 70,
-            'oversold': rsi < 30,
-            'rsi_value': rsi
-        }
+        # Volatility Indicators
+        self.calculate_volatility_indicators()
         
-        # MACD Signals
-        macd = indicators['momentum']['macd'].iloc[-1]
-        macd_signal = indicators['momentum']['macd_signal'].iloc[-1]
-        macd_signals = {
-            'bullish_cross': (macd > macd_signal and 
-                            indicators['momentum']['macd'].iloc[-2] <= 
-                            indicators['momentum']['macd_signal'].iloc[-2]),
-            'bearish_cross': (macd < macd_signal and 
-                            indicators['momentum']['macd'].iloc[-2] >= 
-                            indicators['momentum']['macd_signal'].iloc[-2])
-        }
+        # Volume Indicators
+        self.calculate_volume_indicators()
         
-        # Bollinger Bands Signals
-        bb_signals = {
-            'above_upper': current_price > indicators['volatility']['bollinger_upper'].iloc[-1],
-            'below_lower': current_price < indicators['volatility']['bollinger_lower'].iloc[-1],
-            'squeeze': (indicators['volatility']['bollinger_upper'].iloc[-1] - 
-                       indicators['volatility']['bollinger_lower'].iloc[-1]) < 
-                       (indicators['volatility']['bollinger_upper'].iloc[-20] - 
-                        indicators['volatility']['bollinger_lower'].iloc[-20])
+        # Trend Indicators
+        self.calculate_trend_indicators()
+
+    def calculate_moving_averages(self):
+        """Calculate various moving averages"""
+        try:
+            # Simple Moving Averages
+            self.data['SMA_20'] = SMAIndicator(close=self.data['Close'], window=20).sma_indicator()
+            self.data['SMA_50'] = SMAIndicator(close=self.data['Close'], window=50).sma_indicator()
+            self.data['SMA_200'] = SMAIndicator(close=self.data['Close'], window=200).sma_indicator()
+            
+            # Exponential Moving Averages
+            self.data['EMA_20'] = EMAIndicator(close=self.data['Close'], window=20).ema_indicator()
+            self.data['EMA_50'] = EMAIndicator(close=self.data['Close'], window=50).ema_indicator()
+            self.data['EMA_200'] = EMAIndicator(close=self.data['Close'], window=200).ema_indicator()
+        except Exception as e:
+            print(f"Error calculating moving averages: {str(e)}")
+
+    def calculate_momentum_indicators(self):
+        """Calculate momentum indicators"""
+        try:
+            # RSI
+            self.data['RSI'] = RSIIndicator(close=self.data['Close']).rsi()
+            
+            # MACD
+            macd = MACD(close=self.data['Close'])
+            self.data['MACD'] = macd.macd()
+            self.data['MACD_Signal'] = macd.macd_signal()
+            self.data['MACD_Hist'] = macd.macd_diff()
+            
+            # Stochastic Oscillator
+            stoch = StochasticOscillator(high=self.data['High'], low=self.data['Low'], close=self.data['Close'])
+            self.data['Stoch_K'] = stoch.stoch()
+            self.data['Stoch_D'] = stoch.stoch_signal()
+        except Exception as e:
+            print(f"Error calculating momentum indicators: {str(e)}")
+
+    def calculate_volatility_indicators(self):
+        """Calculate volatility indicators"""
+        try:
+            # Bollinger Bands
+            bb = BollingerBands(close=self.data['Close'])
+            self.data['BB_Upper'] = bb.bollinger_hband()
+            self.data['BB_Middle'] = bb.bollinger_mavg()
+            self.data['BB_Lower'] = bb.bollinger_lband()
+            
+            # Average True Range
+            self.data['ATR'] = AverageTrueRange(high=self.data['High'], low=self.data['Low'], close=self.data['Close']).average_true_range()
+        except Exception as e:
+            print(f"Error calculating volatility indicators: {str(e)}")
+
+    def calculate_volume_indicators(self):
+        """Calculate volume indicators"""
+        try:
+            # On Balance Volume
+            self.data['OBV'] = OnBalanceVolumeIndicator(close=self.data['Close'], volume=self.data['Volume']).on_balance_volume()
+            
+            # Accumulation/Distribution Index
+            self.data['ADI'] = AccDistIndexIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close'], volume=self.data['Volume']).acc_dist_index()
+            
+            # Money Flow Index
+            self.data['MFI'] = MoneyFlowIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close'], volume=self.data['Volume']).money_flow_index()
+        except Exception as e:
+            print(f"Error calculating volume indicators: {str(e)}")
+
+    def calculate_trend_indicators(self):
+        """Calculate trend indicators"""
+        try:
+            # Average Directional Index
+            self.data['ADX'] = ADXIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close']).adx()
+            
+            # Commodity Channel Index
+            self.data['CCI'] = CCIIndicator(high=self.data['High'], low=self.data['Low'], close=self.data['Close']).cci()
+        except Exception as e:
+            print(f"Error calculating trend indicators: {str(e)}")
+
+    def get_technical_signals(self):
+        """Generate technical analysis signals"""
+        signals = {
+            'Moving Averages': self._get_ma_signals(),
+            'RSI': self._get_rsi_signals(),
+            'MACD': self._get_macd_signals(),
+            'Bollinger Bands': self._get_bb_signals(),
+            'Volume': self._get_volume_signals(),
+            'Trend': self._get_trend_signals()
         }
-        
-        return {
-            'moving_averages': ma_signals,
-            'rsi': rsi_signals,
-            'macd': macd_signals,
-            'bollinger_bands': bb_signals
-        } 
+        return signals
+
+    def _get_ma_signals(self):
+        """Get moving average signals"""
+        try:
+            current_price = self.data['Close'].iloc[-1]
+            signals = []
+            
+            # Check SMA crossovers
+            if self.data['SMA_20'].iloc[-1] > self.data['SMA_50'].iloc[-1]:
+                signals.append("SMA 20 crossed above SMA 50 (Bullish)")
+            elif self.data['SMA_20'].iloc[-1] < self.data['SMA_50'].iloc[-1]:
+                signals.append("SMA 20 crossed below SMA 50 (Bearish)")
+            
+            # Check price vs SMA 200
+            if current_price > self.data['SMA_200'].iloc[-1]:
+                signals.append("Price above SMA 200 (Long-term Bullish)")
+            else:
+                signals.append("Price below SMA 200 (Long-term Bearish)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting MA signals: {str(e)}")
+            return []
+
+    def _get_rsi_signals(self):
+        """Get RSI signals"""
+        try:
+            current_rsi = self.data['RSI'].iloc[-1]
+            signals = []
+            
+            if current_rsi > 70:
+                signals.append("RSI above 70 (Overbought)")
+            elif current_rsi < 30:
+                signals.append("RSI below 30 (Oversold)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting RSI signals: {str(e)}")
+            return []
+
+    def _get_macd_signals(self):
+        """Get MACD signals"""
+        try:
+            signals = []
+            
+            if self.data['MACD'].iloc[-1] > self.data['MACD_Signal'].iloc[-1]:
+                signals.append("MACD above Signal Line (Bullish)")
+            else:
+                signals.append("MACD below Signal Line (Bearish)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting MACD signals: {str(e)}")
+            return []
+
+    def _get_bb_signals(self):
+        """Get Bollinger Bands signals"""
+        try:
+            current_price = self.data['Close'].iloc[-1]
+            signals = []
+            
+            if current_price > self.data['BB_Upper'].iloc[-1]:
+                signals.append("Price above Upper Bollinger Band (Overbought)")
+            elif current_price < self.data['BB_Lower'].iloc[-1]:
+                signals.append("Price below Lower Bollinger Band (Oversold)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting BB signals: {str(e)}")
+            return []
+
+    def _get_volume_signals(self):
+        """Get volume signals"""
+        try:
+            signals = []
+            
+            # Check OBV trend
+            if self.data['OBV'].iloc[-1] > self.data['OBV'].iloc[-2]:
+                signals.append("OBV increasing (Bullish Volume)")
+            else:
+                signals.append("OBV decreasing (Bearish Volume)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting volume signals: {str(e)}")
+            return []
+
+    def _get_trend_signals(self):
+        """Get trend signals"""
+        try:
+            signals = []
+            
+            # Check ADX strength
+            if self.data['ADX'].iloc[-1] > 25:
+                signals.append("Strong trend (ADX > 25)")
+            else:
+                signals.append("Weak trend (ADX < 25)")
+            
+            return signals
+        except Exception as e:
+            print(f"Error getting trend signals: {str(e)}")
+            return [] 
