@@ -1,4 +1,5 @@
-import yfinance as yf
+from alpha_vantage.timeseries import TimeSeries
+from alpha_vantage.fundamentaldata import FundamentalData
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -18,11 +19,41 @@ class StockOnePager:
         Args:
             ticker (str): Stock ticker symbol
         """
+        load_dotenv()
         self.ticker = ticker.upper()
-        self.stock = yf.Ticker(self.ticker)
-        self.info = self.stock.info
-        self.historical_data = self.stock.history(period="5y")
+        self.alpha_vantage_key = os.getenv('ALPHA_VANTAGE_API_KEY')
+        self.ts = TimeSeries(key=self.alpha_vantage_key, output_format='pandas')
+        self.fd = FundamentalData(key=self.alpha_vantage_key)
+        # Fetch company info
+        self.info = self._get_company_info()
+        # Fetch historical data
+        self.historical_data = self._get_historical_data()
         
+    def _get_company_info(self) -> Dict:
+        try:
+            data, _ = self.fd.get_company_overview(self.ticker)
+            return data
+        except Exception as e:
+            print(f"Error fetching company info: {e}")
+            return {}
+
+    def _get_historical_data(self) -> pd.DataFrame:
+        try:
+            data, _ = self.ts.get_daily(symbol=self.ticker, outputsize='full')
+            data = data.rename(columns={
+                '1. open': 'Open',
+                '2. high': 'High',
+                '3. low': 'Low',
+                '4. close': 'Close',
+                '5. volume': 'Volume'
+            })
+            cutoff = datetime.now() - timedelta(days=5*365)
+            data = data[data.index >= cutoff]
+            return data
+        except Exception as e:
+            print(f"Error fetching historical data: {e}")
+            return pd.DataFrame()
+
     def calculate_valuation_metrics(self) -> Dict:
         """
         Calculate key valuation metrics for the stock.
@@ -32,23 +63,23 @@ class StockOnePager:
         """
         try:
             # Basic metrics
-            current_price = self.info.get('currentPrice', 0)
-            market_cap = self.info.get('marketCap', 0)
-            pe_ratio = self.info.get('trailingPE', 0)
-            forward_pe = self.info.get('forwardPE', 0)
-            eps = self.info.get('trailingEps', 0)
+            current_price = float(self.historical_data['Close'].iloc[-1]) if not self.historical_data.empty else 0
+            market_cap = float(self.info.get('MarketCapitalization', 0))
+            pe_ratio = float(self.info.get('PERatio', 0))
+            forward_pe = float(self.info.get('ForwardPE', 0)) if self.info.get('ForwardPE') else 0
+            eps = float(self.info.get('EPS', 0)) if self.info.get('EPS') else 0
             
             # Growth metrics
-            revenue_growth = self.info.get('revenueGrowth', 0)
-            earnings_growth = self.info.get('earningsGrowth', 0)
+            revenue_growth = float(self.info.get('QuarterlyRevenueGrowthYOY', 0))
+            earnings_growth = float(self.info.get('QuarterlyEarningsGrowthYOY', 0))
             
             # Financial health metrics
-            debt_to_equity = self.info.get('debtToEquity', 0)
-            current_ratio = self.info.get('currentRatio', 0)
-            quick_ratio = self.info.get('quickRatio', 0)
+            debt_to_equity = float(self.info.get('DebtToEquity', 0))
+            current_ratio = float(self.info.get('CurrentRatio', 0))
+            quick_ratio = float(self.info.get('QuickRatio', 0))
             
             # Dividend metrics
-            dividend_yield = self.info.get('dividendYield', 0)
+            dividend_yield = float(self.info.get('DividendYield', 0))
             
             return {
                 'current_price': current_price,

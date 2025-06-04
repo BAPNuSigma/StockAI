@@ -3,7 +3,8 @@ from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import yfinance as yf
+from alpha_vantage.timeseries import TimeSeries
+from alpha_vantage.fundamentaldata import FundamentalData
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
@@ -15,17 +16,17 @@ class EnhancedDataFetcher:
     def __init__(self):
         """Initialize data fetchers with API keys from environment variables."""
         load_dotenv()
-        
+        self.alpha_vantage_key = os.getenv('ALPHA_VANTAGE_API_KEY')
+        self.ts = TimeSeries(key=self.alpha_vantage_key, output_format='pandas')
+        self.fd = FundamentalData(key=self.alpha_vantage_key)
         # Initialize API clients
         self.alpaca_client = StockHistoricalDataClient(
             api_key=os.getenv('ALPACA_API_KEY'),
             secret_key=os.getenv('ALPACA_SECRET_KEY')
         )
-        
         self.tiingo_client = TiingoClient({
             'api_key': os.getenv('TIINGO_API_KEY')
         })
-        
         self.fmp_api_key = os.getenv('FMP_API_KEY')
         self.fmp_base_url = "https://financialmodelingprep.com/api/v3"
         
@@ -90,41 +91,32 @@ class EnhancedDataFetcher:
     
     def get_company_profile(self, ticker: str) -> Dict:
         """
-        Get company profile information from Yahoo Finance.
-        
-        Args:
-            ticker (str): Stock ticker symbol
-            
-        Returns:
-            Dict: Company profile data
+        Get company profile information from Alpha Vantage.
         """
         try:
-            # Get data from Yahoo Finance
-            yf_ticker = yf.Ticker(ticker)
-            yf_info = yf_ticker.info
-            
+            data, _ = self.fd.get_company_overview(ticker)
             return {
-                'name': yf_info.get('longName', ''),
-                'sector': yf_info.get('sector', ''),
-                'industry': yf_info.get('industry', ''),
-                'description': yf_info.get('longBusinessSummary', ''),
-                'website': yf_info.get('website', ''),
-                'employees': yf_info.get('fullTimeEmployees', 0),
-                'market_cap': yf_info.get('marketCap', 0),
-                'pe_ratio': yf_info.get('trailingPE', 0),
-                'dividend_yield': yf_info.get('dividendYield', 0),
-                'beta': yf_info.get('beta', 0),
-                'fifty_two_week_high': yf_info.get('fiftyTwoWeekHigh', 0),
-                'fifty_two_week_low': yf_info.get('fiftyTwoWeekLow', 0),
-                'fifty_day_average': yf_info.get('fiftyDayAverage', 0),
-                'two_hundred_day_average': yf_info.get('twoHundredDayAverage', 0),
-                'shares_outstanding': yf_info.get('sharesOutstanding', 0),
-                'shares_float': yf_info.get('floatShares', 0),
-                'shares_short': yf_info.get('sharesShort', 0),
-                'short_ratio': yf_info.get('shortRatio', 0),
-                'short_percent_of_float': yf_info.get('shortPercentOfFloat', 0),
-                'institution_ownership': yf_info.get('institutionOwnership', 0),
-                'insider_ownership': yf_info.get('insiderOwnership', 0)
+                'name': data.get('Name', ticker),
+                'sector': data.get('Sector', ''),
+                'industry': data.get('Industry', ''),
+                'description': data.get('Description', ''),
+                'website': data.get('Website', ''),
+                'employees': data.get('FullTimeEmployees', 0),
+                'market_cap': float(data.get('MarketCapitalization', 0)),
+                'pe_ratio': float(data.get('PERatio', 0)),
+                'dividend_yield': float(data.get('DividendYield', 0)),
+                'beta': float(data.get('Beta', 0)),
+                'fifty_two_week_high': float(data.get('52WeekHigh', 0)),
+                'fifty_two_week_low': float(data.get('52WeekLow', 0)),
+                'fifty_day_average': float(data.get('50DayMovingAverage', 0)),
+                'two_hundred_day_average': float(data.get('200DayMovingAverage', 0)),
+                'shares_outstanding': float(data.get('SharesOutstanding', 0)),
+                'shares_float': None,
+                'shares_short': None,
+                'short_ratio': None,
+                'short_percent_of_float': None,
+                'institution_ownership': None,
+                'insider_ownership': None
             }
         except Exception as e:
             print(f"Error fetching company profile: {e}")
@@ -163,23 +155,23 @@ class EnhancedDataFetcher:
     
     def get_historical_data(self, ticker: str, period: str = "5y") -> pd.DataFrame:
         """
-        Get historical data from Tiingo.
-        
-        Args:
-            ticker (str): Stock ticker symbol
-            period (str): Time period for historical data
-            
-        Returns:
-            pd.DataFrame: Historical price data
+        Get historical data from Alpha Vantage.
         """
         try:
-            historical_data = self.tiingo_client.get_dataframe(
-                ticker,
-                startDate=datetime.now() - timedelta(days=365*5),
-                endDate=datetime.now(),
-                frequency='daily'
-            )
-            return historical_data
+            # Alpha Vantage free API only supports daily, weekly, monthly
+            data, _ = self.ts.get_daily(symbol=ticker, outputsize='full')
+            data = data.rename(columns={
+                '1. open': 'Open',
+                '2. high': 'High',
+                '3. low': 'Low',
+                '4. close': 'Close',
+                '5. volume': 'Volume'
+            })
+            # Filter by period if needed (default 5y)
+            if period == "5y":
+                cutoff = datetime.now() - timedelta(days=5*365)
+                data = data[data.index >= cutoff]
+            return data
         except Exception as e:
             print(f"Error fetching historical data: {e}")
             return pd.DataFrame()
