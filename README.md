@@ -7,6 +7,7 @@ A comprehensive stock analysis tool that generates detailed one-pagers for any s
 - Python 3.11 (required)
 - pip (Python package installer)
 - Git
+- C/C++ compiler (for TA-Lib installation)
 
 ## Features
 
@@ -56,30 +57,49 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Install TA-Lib (required for technical analysis):
+3. Install TA-Lib (required for technical analysis):
 
 For Windows:
-- Download the appropriate wheel file from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
-- Install using pip:
 ```bash
-pip install TA_Lib‑0.4.28‑cp39‑cp39‑win_amd64.whl
+# Download the appropriate wheel file from:
+# https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
+# For Python 3.11 64-bit, download: TA_Lib‑0.4.28‑cp311‑cp311‑win_amd64.whl
+
+# Install the downloaded wheel file
+pip install TA_Lib‑0.4.28‑cp311‑cp311‑win_amd64.whl
 ```
 
 For Linux:
 ```bash
-sudo apt-get install ta-lib
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install build-essential
+sudo apt-get install python3-dev
+
+# Install TA-Lib
+wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+tar -xzf ta-lib-0.4.0-src.tar.gz
+cd ta-lib/
+./configure --prefix=/usr
+make
+sudo make install
+
+# Install Python wrapper
 pip install TA-Lib
 ```
 
 For macOS:
 ```bash
+# Install using Homebrew
 brew install ta-lib
+
+# Install Python wrapper
 pip install TA-Lib
+```
+
+4. Install other dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
 5. Create a `.env` file in the project root with your API keys:
@@ -111,20 +131,12 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 2. **TA-Lib Installation Issues**
    - Windows: Make sure to download the correct wheel file matching your Python version
-   - Linux: If apt-get fails, try:
-     ```bash
-     wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-     tar -xzf ta-lib-0.4.0-src.tar.gz
-     cd ta-lib/
-     ./configure --prefix=/usr
-     make
-     sudo make install
-     ```
-   - macOS: If brew fails, try:
-     ```bash
-     brew update
-     brew install ta-lib
-     ```
+   - If you get "Failed building wheel for TA-Lib" error:
+     - Windows: Download and install the appropriate wheel file manually
+     - Linux: Make sure you have build-essential and python3-dev installed
+     - macOS: Make sure you have Xcode Command Line Tools installed
+   - If you get "ta-lib.h: No such file or directory" error:
+     - Make sure TA-Lib is properly installed on your system before installing the Python wrapper
 
 3. **Pandas Installation Issues**
    - If you encounter build errors, try:
