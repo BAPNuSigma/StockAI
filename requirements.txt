@@ -1,28 +1,29 @@
-# Core data processing and analysis
-yfinance==0.2.36
-pandas==2.2.0
-numpy==1.26.3
-scipy==1.12.0
+# Core dependencies
+streamlit==1.31.0; pandas==2.2.0; numpy==1.26.3; plotly==5.18.0; matplotlib==3.8.2; scipy==1.12.0;
+
+# Data fetching and APIs
+yfinance==0.2.36; alpaca-py==0.40.1; tiingo==0.1.0; requests==2.31.0;
+
+# Technical Analysis
+ta==0.11.0;
+
+# Document Generation
+python-docx==1.1.2; docx2pdf==0.1.8;
+
+# Environment and Utilities
+python-dotenv==1.0.0;
 
 # Visualization
-matplotlib==3.8.2
-plotly==5.18.0
+matplotlib==3.8.2; plotly==5.18.0;
 
 # Web framework and API
-streamlit==1.31.0
-requests==2.31.0
-python-dotenv==1.0.0
+streamlit==1.31.0; requests==2.31.0; python-dotenv==1.0.0;
 
 # Trading and market data
-alpaca-py==0.40.1
-tiingo==0.1.0
-financialmodelingprep==0.0.1
-ta==0.11.0  # Technical Analysis library (replaces TA-Lib)
+alpaca-py==0.40.1; tiingo==0.1.0; financialmodelingprep==0.0.1; ta==0.11.0  # Technical Analysis library (replaces TA-Lib);
 
 # Document processing
-docx2pdf
-python-docx
-beautifulsoup4==4.12.2
+docx2pdf; python-docx; beautifulsoup4==4.12.2;
 
 # AI and analysis
 openai==1.12.0 

@@ -8,7 +8,7 @@ from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from tiingo import TiingoClient
-from financialmodelingprep import FinancialModelingPrep
+import requests
 from dotenv import load_dotenv
 
 class EnhancedDataFetcher:
@@ -26,9 +26,8 @@ class EnhancedDataFetcher:
             'api_key': os.getenv('TIINGO_API_KEY')
         })
         
-        self.fmp_client = FinancialModelingPrep(
-            api_key=os.getenv('FMP_API_KEY')
-        )
+        self.fmp_api_key = os.getenv('FMP_API_KEY')
+        self.fmp_base_url = "https://financialmodelingprep.com/api/v3"
         
     def get_real_time_data(self, ticker: str) -> Dict:
         """
@@ -68,9 +67,17 @@ class EnhancedDataFetcher:
             Dict: Financial statements data
         """
         try:
-            income_stmt = self.fmp_client.income_statement(ticker)
-            balance_sheet = self.fmp_client.balance_sheet(ticker)
-            cash_flow = self.fmp_client.cash_flow(ticker)
+            # Get income statement
+            income_stmt_url = f"{self.fmp_base_url}/income-statement/{ticker}?apikey={self.fmp_api_key}"
+            income_stmt = requests.get(income_stmt_url).json()
+            
+            # Get balance sheet
+            balance_sheet_url = f"{self.fmp_base_url}/balance-sheet-statement/{ticker}?apikey={self.fmp_api_key}"
+            balance_sheet = requests.get(balance_sheet_url).json()
+            
+            # Get cash flow
+            cash_flow_url = f"{self.fmp_base_url}/cash-flow-statement/{ticker}?apikey={self.fmp_api_key}"
+            cash_flow = requests.get(cash_flow_url).json()
             
             return {
                 'income_statement': income_stmt,
